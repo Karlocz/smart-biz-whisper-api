@@ -1,47 +1,50 @@
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
-const xlsx = require("xlsx");
-const { Configuration, OpenAIApi } = require("openai");
+const XLSX = require("xlsx");
+const OpenAI = require("openai");
 require("dotenv").config();
 
 const app = express();
-app.use(cors());
-
 const upload = multer({ storage: multer.memoryStorage() });
 
-const openai = new OpenAIApi(
-  new Configuration({ apiKey: process.env.OPENAI_API_KEY })
-);
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+app.use(cors());
+app.use(express.json());
 
 app.get("/", (req, res) => {
   res.send("Smart Biz Whisper API is running.");
 });
 
 app.post("/analyze", upload.single("file"), async (req, res) => {
-  if (!req.file) return res.status(400).send("No file uploaded");
-
-  const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
-  const sheetName = workbook.SheetNames[0];
-  const data = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
-
   try {
-    const prompt = `Analyze the following business spreadsheet data and give a summary with key insights:\n\n${JSON.stringify(data).slice(0, 2000)}`;
+    if (!req.file) return res.status(400).send("No file uploaded");
 
-    const completion = await openai.createChatCompletion({
-      model: "gpt-3.5-turbo",
-      messages: [{ role: "user", content: prompt }],
+    const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+    const sheetName = workbook.SheetNames[0];
+    const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+    const prompt = `Analyze the following business spreadsheet data and provide insights:\n\n${JSON.stringify(data).slice(0, 6000)}`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        { role: "system", content: "You are a business analyst." },
+        { role: "user", content: prompt },
+      ],
+      temperature: 0.7,
     });
 
-    res.json({
-      summary: completion.data.choices[0].message.content,
-      rows: data.length
-    });
+    const result = completion.choices[0].message.content;
+    res.json({ summary: result });
   } catch (err) {
-    console.error(err);
-    res.status(500).send("Error processing file");
+    console.error("Error analyzing file:", err);
+    res.status(500).send("Internal Server Error");
   }
 });
 
-const port = process.env.PORT || 10000;
-app.listen(port, () => console.log(`Server running on port ${port}`));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
