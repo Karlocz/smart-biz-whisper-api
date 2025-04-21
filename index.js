@@ -30,7 +30,7 @@ app.post("/analyze", upload.single("file"), async (req, res) => {
     const prompt = `Analyze the following business spreadsheet data and provide insights:\n\n${JSON.stringify(data).slice(0, 6000)}`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-3.5-turbo",
       messages: [
         { role: "system", content: "You are a business analyst." },
         { role: "user", content: prompt },
