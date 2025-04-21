@@ -10,6 +10,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+  engine: "gpt-3.5-turbo" // Especificando a versão correta
 });
 
 app.use(cors());
